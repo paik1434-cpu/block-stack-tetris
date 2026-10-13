@@ -120,6 +120,23 @@ th { font-weight: 400; color: var(--muted); padding-right: 12px; white-space: no
 td.num { font-family: var(--font-display); text-align: right; font-variant-numeric: tabular-nums; }
 ul.plain { margin: 0; padding-left: 18px; font-size: 14px; }
 ul.plain li { margin-bottom: 4px; }
+
+.mascot { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 10px 8px 6px; }
+.bubble { position: relative; width: 100%; min-height: 3.1em; display: grid; place-items: center; background: var(--card2); border: 2px solid var(--brown); border-radius: 12px; padding: 4px 6px; font-size: 12px; line-height: 1.35; text-align: center; }
+.bubble::after { content: ""; position: absolute; bottom: -7px; left: 50%; margin-left: -5px; width: 10px; height: 10px; background: var(--card2); border-right: 2px solid var(--brown); border-bottom: 2px solid var(--brown); transform: rotate(45deg); }
+.cat-wrap { width: 100%; max-width: 110px; }
+.card .cat-wrap { width: 88px; }
+.cat { display: block; width: 100%; height: auto; color: var(--brown); overflow: visible; }
+.cat .e-open, .cat .e-happy, .cat .e-sleep, .cat .e-sad, .cat .e-worry, .cat .zzz { display: none; }
+.cat[data-mood="idle"] .e-open, .cat[data-mood="worry"] .e-open { display: inline; }
+.cat[data-mood="happy"] .e-happy, .cat[data-mood="sleep"] .e-sleep, .cat[data-mood="sad"] .e-sad, .cat[data-mood="worry"] .e-worry, .cat[data-mood="sleep"] .zzz { display: inline; }
+.cat .tail { transform-origin: 70px 86px; animation: wag 2.4s ease-in-out infinite; }
+.cat .e-open { transform-origin: 50px 44px; animation: blink 4.5s infinite; }
+.cat[data-mood="happy"] { animation: hop .5s ease 3; }
+@keyframes wag { 0%,100% { transform: rotate(0); } 50% { transform: rotate(-12deg); } }
+@keyframes blink { 0%,92%,100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
+@keyframes hop { 0%,100% { transform: translateY(0); } 40% { transform: translateY(-9px); } }
+@media (prefers-reduced-motion: reduce) { .cat .tail, .cat .e-open, .cat[data-mood="happy"] { animation: none; } }
 </style>
 
 </head>
@@ -130,6 +147,8 @@ ul.plain li { margin-bottom: 4px; }
       <circle cx="0" cy="-5" r="4.4" fill="#fff"/><circle cx="4.8" cy="-1.5" r="4.4" fill="#fff"/><circle cx="3" cy="4" r="4.4" fill="#fff"/><circle cx="-3" cy="4" r="4.4" fill="#fff"/><circle cx="-4.8" cy="-1.5" r="4.4" fill="#fff"/>
       <circle r="2.6" fill="#F4A0B0"/>
     </g>
+    <clipPath id="catBody"><ellipse cx="50" cy="80" rx="25" ry="19"/></clipPath>
+    <clipPath id="catHead"><ellipse cx="50" cy="44" rx="30" ry="26"/></clipPath>
     <symbol id="tree" viewBox="0 0 200 220">
       <path d="M88 150 Q86 200 74 214 L126 214 Q114 200 112 150 Z" fill="#8B5A47" stroke="#6B4333" stroke-width="3"/>
       <path d="M100 8 C150 4 190 40 186 88 C184 124 160 150 124 156 L76 156 C40 150 12 124 14 88 C12 40 52 6 100 8 Z" fill="#F9D3D8" stroke="#EDA7B3" stroke-width="4"/>
@@ -195,6 +214,7 @@ ul.plain li { margin-bottom: 4px; }
       <div class="pop" id="pop" aria-live="polite"></div>
       <div class="overlay" id="overlay">
         <div class="card">
+          <div class="cat-wrap" id="ovCat"></div>
           <h2 id="ovTitle">한 층씩 올려 볼까요?</h2>
           <div class="big" id="ovScore" hidden></div>
           <p id="ovSub">한 줄이 가득 차면 그 층은 와르르 무너져요</p>
@@ -208,6 +228,10 @@ ul.plain li { margin-bottom: 4px; }
       <div class="panel">
         <span class="label">다음</span>
         <canvas id="next" class="mini" width="100" height="252"></canvas>
+      </div>
+      <div class="panel mascot">
+        <div class="bubble" id="bubble">쌓아 볼까냥?</div>
+        <div class="cat-wrap" id="sideCat"></div>
       </div>
     </div>
   </div>
@@ -305,6 +329,51 @@ ul.plain li { margin-bottom: 4px; }
   var muted = false;
   try { muted = localStorage.getItem('blockapt-muted') === '1'; } catch (e) {}
 
+  /* ---------- 마스코트 고양이 ---------- */
+  var CAT = '<svg class="cat" viewBox="0 0 100 100" data-mood="idle" aria-hidden="true">'
+    + '<g class="tail"><path d="M70 86 C94 88 98 62 86 52" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="round"/><path d="M70 86 C94 88 98 62 86 52" fill="none" stroke="#E9A25B" stroke-width="5.5" stroke-linecap="round"/></g>'
+    + '<ellipse cx="50" cy="80" rx="25" ry="19" fill="#fff"/>'
+    + '<g clip-path="url(#catBody)"><rect x="20" y="64" width="60" height="5" fill="#46689A"/><rect x="20" y="74" width="60" height="5" fill="#46689A"/><rect x="20" y="84" width="60" height="5" fill="#46689A"/></g>'
+    + '<ellipse cx="50" cy="80" rx="25" ry="19" fill="none" stroke="currentColor" stroke-width="3"/>'
+    + '<ellipse cx="37" cy="97" rx="8" ry="4.5" fill="#FFF3E0" stroke="currentColor" stroke-width="2.5"/><ellipse cx="63" cy="97" rx="8" ry="4.5" fill="#FFF3E0" stroke="currentColor" stroke-width="2.5"/>'
+    + '<path d="M22 30 L27 6 L46 20 Z" fill="#E9A25B" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M78 30 L73 6 L54 20 Z" fill="#FFF3E0" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/>'
+    + '<path d="M28 24 L30 14 L38 20 Z" fill="#F7B6C2"/><path d="M72 24 L70 14 L62 20 Z" fill="#F7B6C2"/>'
+    + '<ellipse cx="50" cy="44" rx="30" ry="26" fill="#FFF3E0"/>'
+    + '<g clip-path="url(#catHead)"><ellipse cx="30" cy="36" rx="16" ry="18" fill="#E9A25B"/><ellipse cx="74" cy="30" rx="12" ry="9" fill="#9A6A4B"/></g>'
+    + '<ellipse cx="50" cy="44" rx="30" ry="26" fill="none" stroke="currentColor" stroke-width="3"/>'
+    + '<ellipse cx="32" cy="54" rx="5" ry="3" fill="#F7A3B3" opacity=".75"/><ellipse cx="68" cy="54" rx="5" ry="3" fill="#F7A3B3" opacity=".75"/>'
+    + '<path d="M47 50 L53 50 L50 54 Z" fill="#F58BA0"/><path d="M50 54 Q46 59 42 56 M50 54 Q54 59 58 56" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'
+    + '<g class="e-open"><circle cx="38" cy="44" r="3.8" fill="currentColor"/><circle cx="62" cy="44" r="3.8" fill="currentColor"/><circle cx="39.3" cy="42.7" r="1.2" fill="#fff"/><circle cx="63.3" cy="42.7" r="1.2" fill="#fff"/></g>'
+    + '<path class="e-happy" d="M33 46 Q38 39 43 46 M57 46 Q62 39 67 46" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>'
+    + '<path class="e-sleep" d="M33 44 Q38 48 43 44 M57 44 Q62 48 67 44" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>'
+    + '<text class="zzz" x="76" y="20" font-size="15" fill="currentColor" font-family="Jua, sans-serif">Zz</text>'
+    + '<g class="e-sad"><circle cx="38" cy="45" r="3.2" fill="currentColor"/><circle cx="62" cy="45" r="3.2" fill="currentColor"/><path d="M31 37 L43 40 M69 37 L57 40" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M62 50 q-3.5 5 0 8 q3.5 -3 0 -8" fill="#9CCBF0" stroke="currentColor" stroke-width="1.4"/></g>'
+    + '<path class="e-worry" d="M76 28 q-4 6 0 9 q4 -3 0 -9" fill="#9CCBF0" stroke="currentColor" stroke-width="1.6"/>'
+    + '</svg>';
+  $('sideCat').innerHTML = CAT; $('ovCat').innerHTML = CAT;
+  var bubbleEl = $('bubble'), moodTimer = null, moodBusy = false;
+  var chatter = ['창문이 크다냥!', '천천히 해도 된다냥', '한 줄만 더 채워 보냥', '실외기 귀엽다냥', '빨래 널린 집이다냥'];
+  function applyMood(m, text) {
+    Array.prototype.forEach.call(document.querySelectorAll('.cat'), function (el) { el.setAttribute('data-mood', m); });
+    if (text) bubbleEl.textContent = text;
+  }
+  function dangerHigh() { for (var r = 0; r < 7; r++) if (board[r].some(Boolean)) return true; return false; }
+  function restMood() {
+    if (moodBusy) return;
+    if (state === 'over') applyMood('sad');
+    else if (state === 'paused') applyMood('sleep');
+    else if (state !== 'ready' && dangerHigh()) applyMood('worry', '너무 높아냥…');
+    else applyMood('idle');
+  }
+  function setMood(m, text, ms) {
+    clearTimeout(moodTimer); applyMood(m, text);
+    moodBusy = !!ms;
+    if (ms) moodTimer = setTimeout(function () { moodBusy = false; restMood(); }, ms);
+  }
+  setInterval(function () {
+    if (state === 'playing' && !moodBusy && !dangerHigh()) bubbleEl.textContent = chatter[Math.floor(Math.random() * chatter.length)];
+  }, 9000);
+
   /* ---------- sound ---------- */
   var actx = null;
   function tone(freq, dur, type, vol, delay) {
@@ -363,7 +432,7 @@ ul.plain li { margin-bottom: 4px; }
     acc = 0; lockTimer = 0; lockResets = 0;
     if (collides(cur.m, cur.x, cur.y)) gameOver();
   }
-  function nextPiece() { spawn(pullNext()); canHold = true; drawSide(); }
+  function nextPiece() { spawn(pullNext()); canHold = true; drawSide(); restMood(); }
 
   function grounded() { return collides(cur.m, cur.x, cur.y + 1); }
   function touchLock() { if (grounded() && lockResets < LOCK_RESETS) { lockTimer = 0; lockResets++; } }
@@ -436,7 +505,7 @@ ul.plain li { margin-bottom: 4px; }
   }
 
   function finishClear() {
-    var n = clearRows.length;
+    var n = clearRows.length, wasLevel = level;
     board = board.filter(function (_, i) { return clearRows.indexOf(i) < 0; });
     while (board.length < ROWS) board.unshift(new Array(COLS).fill(0));
     var table = [0, 100, 300, 500, 800];
@@ -446,6 +515,7 @@ ul.plain li { margin-bottom: 4px; }
     if (newLevel > level) { level = newLevel; sfx.level(); showPop(level + '층 달성!'); }
     else if (n === 4) showPop('와르르 무너졌다!');
     clearRows = null; clearFx = null; state = 'playing';
+    setMood('happy', n === 4 ? '대단하다냥!!' : (level > wasLevel ? level + '층이다냥!' : '와르르 냥!'), 1600);
     updateHud(); nextPiece();
   }
 
@@ -461,6 +531,7 @@ ul.plain li { margin-bottom: 4px; }
   function start() {
     reset(); state = 'playing'; overlay.hidden = true;
     nextPiece(); sfx.level();
+    setMood('idle', '시작이다냥!', 2000);
   }
   function gameOver() {
     state = 'over'; sfx.over();
@@ -472,13 +543,16 @@ ul.plain li { margin-bottom: 4px; }
     ovSub.textContent = (isBest && score > 0 ? '새 최고 기록이에요! ' : '') + lines + '층 무너뜨림 · ' + level + '층까지 올라감';
     ovBtn.textContent = '다시 짓기';
     overlay.hidden = false;
+    setMood('sad', '다음엔 더 높이 쌓자냥');
   }
   function togglePause() {
     if (state === 'playing') {
       state = 'paused'; ovTitle.textContent = '잠깐 쉬는 중'; ovScore.hidden = true; ovSub.textContent = 'P 키로 계속할 수 있어요';
       ovBtn.textContent = '계속하기'; overlay.hidden = false;
+      setMood('sleep', '쿨쿨…');
     } else if (state === 'paused') {
       state = 'playing'; overlay.hidden = true;
+      setMood('idle', '다시 시작이다냥!', 1500);
     }
   }
   function primary() {
