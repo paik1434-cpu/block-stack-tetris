@@ -3,104 +3,124 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>블록 스택 테트리스</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<title>조각보 테트리스</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Nanum+Brush+Script&display=swap">
 <style>
-/* Layout: 보관 + 기록 | 10x20 보드 | 다음 블록. 아래에 기획 노트. 좁은 화면에서도 3열 유지, 터치 버튼 추가 */
+/* 컨셉: 조각보. 한지 위에 천 조각(블록)을 이어 붙인다. 오방색 계열 7색, 시침질 점선, 단청 테두리, 붓글씨 제목, 붉은 낙관 */
 :root {
-  --bg: #E7ECED;
-  --surface: #F5F8F8;
-  --ink: #14262B;
-  --muted: #566B71;
-  --line: #C5D1D3;
-  --board: #17262B;
-  --grid: rgba(255,255,255,.055);
-  --accent: #1B7F80;
-  --on-accent: #FFFFFF;
-  --p1: #35C2D6; --p2: #F0C23B; --p3: #A47BE0; --p4: #52B96F; --p5: #E8605A; --p6: #4F7BEA; --p7: #F29A3A;
-  --font-display: "Do Hyeon", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
-  --font-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  --bg: #E6DCC6;
+  --paper: #F4EDDC;
+  --ink: #2B241C;
+  --muted: #6E6350;
+  --line: #CBBEA2;
+  --board: #F2E9D4;
+  --grid: rgba(43,36,28,.09);
+  --veil: rgba(244,237,220,.92);
+  --accent: #A8412D;
+  --on-accent: #F8F0DE;
+  --ring-blue: #2F5D8C;
+  --ring-gold: #D9A441;
+  --p1: #4DA29D; --p2: #E0B03A; --p3: #8A3F6B; --p4: #5C9A6B; --p5: #BF3E32; --p6: #2F5D8C; --p7: #DA7A38;
+  --font-brush: "Nanum Brush Script", "Gowun Batang", serif;
+  --font-body: "Gowun Batang", "Batang", "Nanum Myeongjo", serif;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0F1719; --surface: #172226; --ink: #E3EEEF; --muted: #8FA5AA; --line: #2A3A3F;
-    --board: #0A1012; --grid: rgba(255,255,255,.045); --accent: #45BDB4; --on-accent: #06201F;
+    --bg: #12100E; --paper: #1E1B16; --ink: #EDE3CB; --muted: #A59A82; --line: #3A3429;
+    --board: #191612; --grid: rgba(237,227,203,.07); --veil: rgba(25,22,18,.92);
+    --accent: #D2634B; --on-accent: #1B120E; --ring-blue: #4D7FB4; --ring-gold: #C8963A;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #0F1719; --surface: #172226; --ink: #E3EEEF; --muted: #8FA5AA; --line: #2A3A3F;
-  --board: #0A1012; --grid: rgba(255,255,255,.045); --accent: #45BDB4; --on-accent: #06201F;
+  --bg: #12100E; --paper: #1E1B16; --ink: #EDE3CB; --muted: #A59A82; --line: #3A3429;
+  --board: #191612; --grid: rgba(237,227,203,.07); --veil: rgba(25,22,18,.92);
+  --accent: #D2634B; --on-accent: #1B120E; --ring-blue: #4D7FB4; --ring-gold: #C8963A;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
-body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.6; }
-.app { max-width: 920px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 40px; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.65; position: relative; }
+body::before { content: ""; position: fixed; inset: 0; pointer-events: none; opacity: .3; z-index: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .45  0 0 0 0 .38  0 0 0 0 .28  0 0 0 .55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); }
+.app { position: relative; z-index: 1; max-width: 920px; margin: 0 auto; padding-inline: 16px; padding-block: 22px 44px; }
 
-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
-h1 { font-family: var(--font-display); font-weight: 400; font-size: 30px; letter-spacing: .02em; margin: 0; line-height: 1.1; text-wrap: balance; }
-h1 small { display: block; font-family: var(--font-body); font-size: 12px; color: var(--muted); letter-spacing: .08em; margin-top: 4px; }
+header { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.brand { display: flex; align-items: center; gap: 14px; }
+h1 { font-family: var(--font-brush); font-weight: 400; font-size: clamp(44px, 12vw, 64px); letter-spacing: .02em; margin: 0; line-height: 1; }
+.brand small { display: block; font-size: 13px; color: var(--muted); margin-top: 6px; }
+.seal { flex: none; display: grid; place-items: center; width: 38px; height: 38px; background: var(--accent); color: var(--on-accent); font-size: 14px; font-weight: 700; line-height: 1; border-radius: 3px; transform: rotate(-6deg); box-shadow: inset 0 0 0 2px rgba(248,240,222,.4); }
 .tools { display: flex; gap: 8px; }
-.ibtn { font: inherit; font-size: 13px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px; cursor: pointer; }
-.ibtn:hover { border-color: var(--accent); }
-.ibtn[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.ibtn { font: inherit; font-size: 13px; color: var(--ink); background: transparent; border: 1px solid var(--ink); border-radius: 2px; padding: 4px 12px; cursor: pointer; }
+.ibtn:hover { background: var(--ink); color: var(--paper); }
+.ibtn[aria-pressed="true"] { border-style: dashed; color: var(--muted); border-color: var(--muted); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.band { height: 8px; margin-bottom: 26px; background: linear-gradient(90deg, var(--p6) 0 12%, var(--p2) 12% 20%, var(--p5) 20% 38%, var(--p4) 38% 47%, var(--p3) 47% 66%, var(--p1) 66% 78%, var(--p7) 78% 100%); }
 
-.game { display: grid; grid-template-columns: minmax(70px, 130px) clamp(150px, calc((100dvh - 250px) / 2), 300px) minmax(70px, 130px); gap: clamp(8px, 2.5vw, 22px); justify-content: center; align-items: start; }
-.side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
-.label { font-size: 11px; font-weight: 600; letter-spacing: .12em; color: var(--muted); margin: 0 0 6px; }
-.mini { display: block; width: 100%; height: auto; background: var(--board); border-radius: 4px; }
-.stat { display: flex; flex-direction: column; margin-bottom: 8px; }
+.game { display: grid; grid-template-columns: minmax(70px, 130px) clamp(150px, calc((100dvh - 270px) / 2), 300px) minmax(70px, 130px); gap: clamp(14px, 3vw, 30px); justify-content: center; align-items: start; padding: 12px; }
+.side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.panel { position: relative; background: var(--paper); border: 1px solid var(--ink); border-radius: 2px; padding: 12px 10px; }
+.panel::after { content: ""; position: absolute; inset: 3px; border: 1px dashed var(--muted); opacity: .55; pointer-events: none; }
+.label { display: block; font-size: 12px; font-weight: 700; letter-spacing: .06em; color: var(--accent); margin: 0 0 6px; }
+.mini { display: block; width: 100%; height: auto; background: var(--board); border: 1px solid var(--line); }
+.stat { display: flex; flex-direction: column; margin-bottom: 10px; }
 .stat:last-child { margin-bottom: 0; }
-.stat output { font-family: var(--font-mono); font-weight: 600; font-size: clamp(16px, 4.5vw, 24px); font-variant-numeric: tabular-nums; line-height: 1.2; overflow-wrap: anywhere; }
+.stat .label { margin-bottom: 0; }
+.stat output { font-weight: 700; font-size: clamp(18px, 5vw, 26px); font-variant-numeric: tabular-nums; line-height: 1.25; overflow-wrap: anywhere; }
 
-.board-wrap { position: relative; border-radius: 8px; overflow: hidden; border: 3px solid var(--ink); background: var(--board); }
+.board-wrap { position: relative; overflow: hidden; border: 2px solid var(--ink); background: var(--board);
+  box-shadow: 0 0 0 4px var(--ring-gold), 0 0 0 8px var(--ring-blue), 0 0 0 10px var(--ink), 6px 12px 0 10px rgba(0,0,0,.12); }
 #board { display: block; width: 100%; height: auto; }
-.overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 16px; background: rgba(8, 14, 16, .78); color: #E6F0F1; }
+.overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 16px; background: var(--veil); color: var(--ink); }
 .overlay[hidden] { display: none; }
-.overlay h2 { font-family: var(--font-display); font-weight: 400; font-size: clamp(22px, 6vw, 32px); margin: 0; }
-.overlay p { margin: 0; font-size: 13px; color: #A9BDC1; }
-.overlay .big { font-family: var(--font-mono); font-size: clamp(22px, 6vw, 30px); font-weight: 600; color: #fff; font-variant-numeric: tabular-nums; }
-.btn { font: inherit; font-weight: 600; background: var(--accent); color: var(--on-accent); border: 0; border-radius: 6px; padding: 10px 22px; cursor: pointer; }
+.overlay h2 { font-family: var(--font-brush); font-weight: 400; font-size: clamp(34px, 9vw, 50px); line-height: 1.1; margin: 0; }
+.overlay p { margin: 0; font-size: 13px; color: var(--muted); }
+.overlay .big { font-weight: 700; font-size: clamp(22px, 6vw, 30px); font-variant-numeric: tabular-nums; }
+.btn { font: inherit; font-weight: 700; background: var(--accent); color: var(--on-accent); border: 0; border-radius: 3px; padding: 10px 26px; cursor: pointer; box-shadow: inset 0 0 0 3px rgba(248,240,222,.35); }
 .btn:hover { filter: brightness(1.08); }
-.pop { position: absolute; left: 0; right: 0; top: 38%; text-align: center; font-family: var(--font-display); font-size: clamp(22px, 7vw, 34px); color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.5); pointer-events: none; opacity: 0; }
-.pop.go { animation: pop .9s ease-out; }
+.pop { position: absolute; left: 0; right: 0; top: 38%; text-align: center; font-family: var(--font-brush); font-size: clamp(36px, 10vw, 54px); color: var(--accent); text-shadow: 0 0 8px var(--board), 0 0 3px var(--board), 0 0 12px var(--board); pointer-events: none; opacity: 0; }
+.pop.go { animation: pop 1s ease-out; }
 @keyframes pop { 0% { opacity: 0; transform: translateY(12px) scale(.9); } 20% { opacity: 1; transform: none; } 75% { opacity: 1; } 100% { opacity: 0; transform: translateY(-14px); } }
 @media (prefers-reduced-motion: reduce) { .pop.go { animation: none; opacity: 1; } }
 
-.touch { display: none; margin: 16px auto 0; max-width: 360px; grid-template-columns: repeat(4, 1fr); gap: 8px; touch-action: none; user-select: none; -webkit-user-select: none; }
-.touch button { font: inherit; font-weight: 600; font-size: 14px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 0; touch-action: none; }
+.touch { display: none; margin: 22px auto 0; max-width: 360px; grid-template-columns: repeat(4, 1fr); gap: 8px; touch-action: none; user-select: none; -webkit-user-select: none; }
+.touch button { font: inherit; font-weight: 700; font-size: 14px; color: var(--ink); background: var(--paper); border: 1px solid var(--ink); border-radius: 2px; padding: 14px 0; touch-action: none; }
 .touch button:active { background: var(--accent); color: var(--on-accent); }
 @media (pointer: coarse), (max-width: 700px) { .touch { display: grid; } .keys-hint { display: none; } }
-.keys-hint { text-align: center; color: var(--muted); font-size: 13px; margin-top: 14px; }
-kbd { font-family: var(--font-mono); font-size: 12px; background: var(--surface); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 1px 6px; }
+.keys-hint { text-align: center; color: var(--muted); font-size: 13px; margin-top: 26px; }
+kbd { font-family: inherit; font-size: 12px; font-weight: 700; background: var(--paper); border: 1px solid var(--ink); border-bottom-width: 3px; border-radius: 2px; padding: 0 6px; }
 
-.notes { margin-top: 44px; border-top: 1px solid var(--line); padding-top: 24px; }
-.notes h2 { font-family: var(--font-display); font-weight: 400; font-size: 22px; margin: 0 0 4px; }
-.notes > p { margin: 0 0 20px; color: var(--muted); max-width: 62ch; }
-.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; }
+.notes { margin-top: 48px; padding-top: 26px; border-top: 1px dashed var(--muted); }
+.notes h2 { font-family: var(--font-brush); font-weight: 400; font-size: 36px; line-height: 1.1; margin: 0 0 4px; }
+.notes > p { margin: 0 0 22px; color: var(--muted); max-width: 62ch; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 28px; }
 .cols section { min-width: 0; }
-.cols h3 { font-size: 13px; letter-spacing: .1em; margin: 0 0 8px; color: var(--accent); font-weight: 600; }
+.cols h3 { font-size: 14px; letter-spacing: .06em; margin: 0 0 8px; color: var(--accent); font-weight: 700; }
 table { border-collapse: collapse; width: 100%; font-size: 14px; }
 th, td { text-align: left; padding: 6px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
-th { font-weight: 500; color: var(--muted); padding-right: 12px; white-space: nowrap; }
-td.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; }
+th { font-weight: 400; color: var(--muted); padding-right: 12px; white-space: nowrap; }
+td.num { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
 ul.plain { margin: 0; padding-left: 18px; font-size: 14px; }
 ul.plain li { margin-bottom: 4px; }
 </style>
+
 
 </head>
 <body>
 <div class="app">
   <header>
-    <h1>블록 스택<small>CLASSIC TETRIS · 10 × 20</small></h1>
+    <div class="brand">
+      <span class="seal" aria-hidden="true">쌓기</span>
+      <div>
+        <h1>조각보</h1>
+        <small>천 조각을 이어 붙여 한 줄을 맞추는 테트리스</small>
+      </div>
+    </div>
     <div class="tools">
       <button class="ibtn" id="muteBtn" aria-pressed="false" type="button">소리 켜짐</button>
       <button class="ibtn" id="pauseBtn" type="button">일시정지</button>
     </div>
   </header>
+  <div class="band" aria-hidden="true"></div>
 
   <div class="game">
     <div class="side">
@@ -120,9 +140,9 @@ ul.plain li { margin-bottom: 4px; }
       <canvas id="board" width="300" height="600" aria-label="테트리스 보드"></canvas>
       <div class="pop" id="pop" aria-live="polite"></div>
       <div class="overlay" id="overlay">
-        <h2 id="ovTitle">준비되셨나요?</h2>
+        <h2 id="ovTitle">한 폭 이어 볼까요</h2>
         <div class="big" id="ovScore" hidden></div>
-        <p id="ovSub">블록을 쌓아 줄을 지우세요</p>
+        <p id="ovSub">조각을 쌓아 빈틈없이 줄을 채우세요</p>
         <button class="btn" id="ovBtn" type="button">시작하기</button>
         <p>Enter 키로도 시작해요</p>
       </div>
@@ -350,7 +370,7 @@ ul.plain li { margin-bottom: 4px; }
     var newLevel = 1 + Math.floor(lines / 10);
     if (newLevel > level) { level = newLevel; sfx.level(); showPop('레벨 ' + level); }
     else { sfx.clear(n); }
-    if (n === 4) showPop('테트리스!');
+    if (n === 4) showPop('한 필 완성!');
     clearRows = null; state = 'playing';
     updateHud(); nextPiece();
   }
@@ -374,7 +394,7 @@ ul.plain li { margin-bottom: 4px; }
     var isBest = score > best;
     if (isBest) { best = score; try { localStorage.setItem('blockstack-best', String(best)); } catch (e) {} }
     updateHud();
-    ovTitle.textContent = '게임 오버';
+    ovTitle.textContent = '여기까지 이었어요';
     ovScore.hidden = false; ovScore.textContent = score.toLocaleString('ko-KR') + '점';
     ovSub.textContent = (isBest && score > 0 ? '새 최고 기록이에요! ' : '') + lines + '줄 · 레벨 ' + level;
     ovBtn.textContent = '다시 하기';
@@ -491,11 +511,19 @@ ul.plain li { margin-bottom: 4px; }
 
   /* ---------- drawing ---------- */
   function cell(ctx, x, y, s, color, alpha) {
+    // 천 조각: 색 바탕 + 올 무늬 + 시침질 점선
     ctx.globalAlpha = alpha == null ? 1 : alpha;
     ctx.fillStyle = color; ctx.fillRect(x, y, s, s);
-    var b = Math.max(2, Math.round(s * 0.13));
-    ctx.fillStyle = 'rgba(255,255,255,.32)'; ctx.fillRect(x, y, s, b); ctx.fillRect(x, y, b, s);
-    ctx.fillStyle = 'rgba(0,0,0,.26)'; ctx.fillRect(x, y + s - b, s, b); ctx.fillRect(x + s - b, y, b, s);
+    ctx.fillStyle = 'rgba(255,255,255,.14)';
+    for (var i = 3; i < s; i += 4) ctx.fillRect(x + i, y, 1, s);
+    ctx.fillStyle = 'rgba(0,0,0,.10)';
+    for (var j = 3; j < s; j += 4) ctx.fillRect(x, y + j, s, 1);
+    ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.fillRect(x, y + s - 1, s, 1); ctx.fillRect(x + s - 1, y, 1, s);
+    ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.fillRect(x, y, s, 1); ctx.fillRect(x, y, 1, s);
+    ctx.strokeStyle = 'rgba(250,244,228,.75)'; ctx.lineWidth = Math.max(1, s / 16);
+    ctx.setLineDash([s / 8, s / 8]);
+    ctx.strokeRect(x + s * .17, y + s * .17, s * .66, s * .66);
+    ctx.setLineDash([]);
     ctx.globalAlpha = 1;
   }
 
@@ -515,8 +543,8 @@ ul.plain li { margin-bottom: 4px; }
         if (!cur.m[yy][xx]) continue;
         var gx = (cur.x + xx) * CELL;
         if (gy + yy >= 0) {
-          c.globalAlpha = .6; c.strokeStyle = colors[idx]; c.lineWidth = 2;
-          c.strokeRect(gx + 2, (gy + yy) * CELL + 2, CELL - 4, CELL - 4); c.globalAlpha = 1;
+          c.globalAlpha = .75; c.strokeStyle = colors[idx]; c.lineWidth = 2; c.setLineDash([5, 4]);
+          c.strokeRect(gx + 3, (gy + yy) * CELL + 3, CELL - 6, CELL - 6); c.setLineDash([]); c.globalAlpha = 1;
         }
       }
       for (var y2 = 0; y2 < cur.m.length; y2++) for (var x2 = 0; x2 < cur.m[y2].length; x2++) {
@@ -525,7 +553,7 @@ ul.plain li { margin-bottom: 4px; }
     }
     if (state === 'clearing' && clearRows) {
       var on = Math.floor(clearTimer / 70) % 2 === 0;
-      c.fillStyle = on ? 'rgba(255,255,255,.9)' : 'rgba(255,255,255,.35)';
+      c.fillStyle = on ? 'rgba(250,244,228,.95)' : 'rgba(250,244,228,.45)';
       clearRows.forEach(function (rr) { c.fillRect(0, rr * CELL, COLS * CELL, CELL); });
     }
   }
