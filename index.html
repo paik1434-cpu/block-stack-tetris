@@ -136,6 +136,13 @@ ul.plain li { margin-bottom: 4px; }
 @keyframes wag { 0%,100% { transform: rotate(0); } 50% { transform: rotate(-12deg); } }
 @keyframes blink { 0%,92%,100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
 @keyframes hop { 0%,100% { transform: translateY(0); } 40% { transform: translateY(-9px); } }
+.cat .o-helmet, .cat .o-ribbon, .cat .o-glasses, .cat .o-scarf { display: none; }
+.cat[data-outfit="helmet"] .o-helmet, .cat[data-outfit="ribbon"] .o-ribbon, .cat[data-outfit="glasses"] .o-glasses, .cat[data-outfit="scarf"] .o-scarf { display: inline; }
+.closet { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
+.oc { font: inherit; font-size: 11px; line-height: 1.4; padding: 1px 8px; border: 2px solid var(--brown); border-radius: 999px; background: var(--card); color: var(--text); cursor: pointer; }
+.oc[aria-pressed="true"] { background: var(--green); }
+.oc:disabled { opacity: .55; cursor: not-allowed; border-style: dashed; }
+.pop small { display: block; font-size: .6em; }
 @media (prefers-reduced-motion: reduce) { .cat .tail, .cat .e-open, .cat[data-mood="happy"] { animation: none; } }
 </style>
 
@@ -215,9 +222,9 @@ ul.plain li { margin-bottom: 4px; }
       <div class="overlay" id="overlay">
         <div class="card">
           <div class="cat-wrap" id="ovCat"></div>
-          <h2 id="ovTitle">한 층씩 올려 볼까요?</h2>
+          <h2 id="ovTitle">블록 아파트</h2>
           <div class="big" id="ovScore" hidden></div>
-          <p id="ovSub">한 줄이 가득 차면 그 층은 와르르 무너져요</p>
+          <p id="ovSub">한 줄을 채우면 그 층이 무너져요. 여러 줄을 한 번에 무너뜨릴수록 점수가 커져요.</p>
           <button class="btn" id="ovBtn" type="button">시작하기</button>
           <p>Enter 키로도 시작해요</p>
         </div>
@@ -230,8 +237,10 @@ ul.plain li { margin-bottom: 4px; }
         <canvas id="next" class="mini" width="100" height="252"></canvas>
       </div>
       <div class="panel mascot">
-        <div class="bubble" id="bubble">쌓아 볼까냥?</div>
+        <div class="bubble" id="bubble">줄을 채우면 그 층이 무너져요</div>
         <div class="cat-wrap" id="sideCat"></div>
+        <span class="label" style="margin:0">옷장</span>
+        <div class="closet" id="closet"></div>
       </div>
     </div>
   </div>
@@ -269,6 +278,9 @@ ul.plain li { margin-bottom: 4px; }
           <tr><th>2줄</th><td class="num">300 × 층수</td></tr>
           <tr><th>3줄</th><td class="num">500 × 층수</td></tr>
           <tr><th>4줄</th><td class="num">800 × 층수</td></tr>
+          <tr><th>연속 4줄</th><td class="num">800 × 1.5</td></tr>
+          <tr><th>콤보</th><td class="num">50 × 횟수 × 층수</td></tr>
+          <tr><th>올 클리어</th><td class="num">+2,000 × 층수</td></tr>
           <tr><th>천천히 낙하</th><td class="num">칸당 1</td></tr>
           <tr><th>즉시 낙하</th><td class="num">칸당 2</td></tr>
         </table>
@@ -323,7 +335,7 @@ ul.plain li { margin-bottom: 4px; }
   var board, cur, hold, canHold, queue;
   var score, lines, level, best = 0;
   var acc, lockTimer, lockResets, clearTimer, clearRows, clearFx;
-  var keys = {}, particles = [];
+  var keys = {}, particles = [], combo = -1, b2b = false;
 
   try { best = parseInt(localStorage.getItem('blockapt-best'), 10) || 0; } catch (e) {}
   var muted = false;
@@ -349,10 +361,43 @@ ul.plain li { margin-bottom: 4px; }
     + '<text class="zzz" x="76" y="20" font-size="15" fill="currentColor" font-family="Jua, sans-serif">Zz</text>'
     + '<g class="e-sad"><circle cx="38" cy="45" r="3.2" fill="currentColor"/><circle cx="62" cy="45" r="3.2" fill="currentColor"/><path d="M31 37 L43 40 M69 37 L57 40" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M62 50 q-3.5 5 0 8 q3.5 -3 0 -8" fill="#9CCBF0" stroke="currentColor" stroke-width="1.4"/></g>'
     + '<path class="e-worry" d="M76 28 q-4 6 0 9 q4 -3 0 -9" fill="#9CCBF0" stroke="currentColor" stroke-width="1.6"/>'
+    + '<g class="o-scarf"><path d="M27 66 Q50 78 73 66 L72 74 Q50 86 28 74 Z" fill="#F27B8B" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M62 78 L68 94 L76 90 L72 76 Z" fill="#F27B8B" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/></g>'
+    + '<g class="o-glasses" fill="rgba(255,255,255,.28)" stroke="currentColor" stroke-width="2.6"><circle cx="38" cy="44" r="8"/><circle cx="62" cy="44" r="8"/><path d="M46 44 H54" fill="none"/></g>'
+    + '<g class="o-ribbon"><path d="M26 22 L12 14 L14 30 Z M26 22 L38 12 L40 28 Z" fill="#FF8FA3" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/><circle cx="26" cy="22" r="4" fill="#FF6F8E" stroke="currentColor" stroke-width="2.5"/></g>'
+    + '<g class="o-helmet"><path d="M25 30 C24 4 76 4 75 30 Z" fill="#FFC93C" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><rect x="20" y="28" width="60" height="6" rx="3" fill="#FFB020" stroke="currentColor" stroke-width="3"/><path d="M50 9 V28" stroke="#FFE08A" stroke-width="4" stroke-linecap="round"/></g>'
     + '</svg>';
   $('sideCat').innerHTML = CAT; $('ovCat').innerHTML = CAT;
   var bubbleEl = $('bubble'), moodTimer = null, moodBusy = false;
-  var chatter = ['창문이 크다냥!', '천천히 해도 된다냥', '한 줄만 더 채워 보냥', '실외기 귀엽다냥', '빨래 널린 집이다냥'];
+  var chatter = ['점선은 조각이 착지할 위치예요', 'C 키로 조각을 보관할 수 있어요', 'Space 키로 바로 떨어뜨려요', 'I 조각으로 4줄을 한 번에 지워 보세요', '연속으로 줄을 지우면 콤보 점수가 붙어요'];
+
+  var OUTFITS = [
+    { id: 'none', name: '없음', need: 0 },
+    { id: 'helmet', name: '안전모', need: 0 },
+    { id: 'ribbon', name: '리본', need: 2000 },
+    { id: 'glasses', name: '안경', need: 5000 },
+    { id: 'scarf', name: '목도리', need: 10000 }
+  ];
+  var outfit = 'helmet';
+  try { var so = localStorage.getItem('blockapt-outfit'); if (so && OUTFITS.some(function (o) { return o.id === so; })) outfit = so; } catch (e) {}
+  function renderCloset() {
+    var box = $('closet'); box.innerHTML = '';
+    OUTFITS.forEach(function (o) {
+      var ok = best >= o.need, b = document.createElement('button');
+      b.type = 'button'; b.className = 'oc'; b.disabled = !ok;
+      b.textContent = ok ? o.name : o.need.toLocaleString('ko-KR') + '점';
+      b.title = ok ? o.name : '최고 점수 ' + o.need.toLocaleString('ko-KR') + '점을 넘기면 열려요';
+      b.setAttribute('aria-pressed', o.id === outfit ? 'true' : 'false');
+      b.addEventListener('click', function () {
+        outfit = o.id; try { localStorage.setItem('blockapt-outfit', outfit); } catch (e) {}
+        applyOutfit(); renderCloset();
+      });
+      box.appendChild(b);
+    });
+  }
+  function applyOutfit() {
+    Array.prototype.forEach.call(document.querySelectorAll('.cat'), function (el) { el.setAttribute('data-outfit', outfit); });
+  }
+  applyOutfit(); renderCloset();
   function applyMood(m, text) {
     Array.prototype.forEach.call(document.querySelectorAll('.cat'), function (el) { el.setAttribute('data-mood', m); });
     if (text) bubbleEl.textContent = text;
@@ -362,7 +407,7 @@ ul.plain li { margin-bottom: 4px; }
     if (moodBusy) return;
     if (state === 'over') applyMood('sad');
     else if (state === 'paused') applyMood('sleep');
-    else if (state !== 'ready' && dangerHigh()) applyMood('worry', '너무 높아냥…');
+    else if (state !== 'ready' && dangerHigh()) applyMood('worry', '건물이 높아요');
     else applyMood('idle');
   }
   function setMood(m, text, ms) {
@@ -501,21 +546,35 @@ ul.plain li { margin-bottom: 4px; }
       });
       sfx.clear(full.length);
       wrap.classList.remove('shake'); void wrap.offsetWidth; wrap.classList.add('shake');
-    } else { updateHud(); nextPiece(); }
+    } else { combo = -1; updateHud(); nextPiece(); }
   }
 
   function finishClear() {
     var n = clearRows.length, wasLevel = level;
     board = board.filter(function (_, i) { return clearRows.indexOf(i) < 0; });
     while (board.length < ROWS) board.unshift(new Array(COLS).fill(0));
+
+    // 점수: 한 번에 많이 무너뜨릴수록 크게 + 연속 4줄 1.5배 + 콤보 + 올 클리어
     var table = [0, 100, 300, 500, 800];
-    score += table[n] * level;
+    var base = table[n] * level, notes = [n === 4 ? '4줄 한 번에!' : n + '줄 철거'];
+    if (n === 4) {
+      if (b2b) { base = Math.round(base * 1.5); notes.push('연속 4줄 ×1.5'); }
+      b2b = true;
+    } else b2b = false;
+    combo++;
+    var comboBonus = combo > 0 ? 50 * combo * level : 0;
+    if (combo > 0) notes.push('콤보 ' + combo);
+    var perfect = board.every(function (row) { return row.every(function (c) { return !c; }); });
+    var perfectBonus = perfect ? (n === 4 ? 3000 : 2000) * level : 0;
+    if (perfect) notes.push('올 클리어');
+    var gain = base + comboBonus + perfectBonus;
+    score += gain;
     lines += n;
     var newLevel = 1 + Math.floor(lines / 10);
-    if (newLevel > level) { level = newLevel; sfx.level(); showPop(level + '층 달성!'); }
-    else if (n === 4) showPop('와르르 무너졌다!');
+    if (newLevel > level) { level = newLevel; sfx.level(); notes.push(level + '층 도달'); }
+    showPop(notes, gain);
     clearRows = null; clearFx = null; state = 'playing';
-    setMood('happy', n === 4 ? '대단하다냥!!' : (level > wasLevel ? level + '층이다냥!' : '와르르 냥!'), 1600);
+    setMood('happy', n === 4 ? '4줄 한 번에! +' + gain.toLocaleString('ko-KR') : '+' + gain.toLocaleString('ko-KR') + '점', 1600);
     updateHud(); nextPiece();
   }
 
@@ -525,42 +584,50 @@ ul.plain li { margin-bottom: 4px; }
   function reset() {
     board = []; for (var r = 0; r < ROWS; r++) board.push(new Array(COLS).fill(0));
     hold = null; canHold = true; queue = []; score = 0; lines = 0; level = 1; keys = {};
-    clearRows = null; particles = [];
+    clearRows = null; particles = []; combo = -1; b2b = false;
     updateHud();
   }
   function start() {
     reset(); state = 'playing'; overlay.hidden = true;
     nextPiece(); sfx.level();
-    setMood('idle', '시작이다냥!', 2000);
+    setMood('idle', chatter[Math.floor(Math.random() * chatter.length)], 2000);
   }
   function gameOver() {
     state = 'over'; sfx.over();
-    var isBest = score > best;
+    var isBest = score > best, prevBest = best;
     if (isBest) { best = score; try { localStorage.setItem('blockapt-best', String(best)); } catch (e) {} }
+    var unlocked = OUTFITS.filter(function (o) { return o.need > prevBest && o.need <= best; }).map(function (o) { return o.name; });
+    renderCloset();
     updateHud();
-    ovTitle.textContent = '하늘에 닿았어요!';
+    ovTitle.textContent = '게임 오버';
     ovScore.hidden = false; ovScore.textContent = score.toLocaleString('ko-KR') + '점';
-    ovSub.textContent = (isBest && score > 0 ? '새 최고 기록이에요! ' : '') + lines + '층 무너뜨림 · ' + level + '층까지 올라감';
+    ovSub.textContent = (isBest && score > 0 ? '최고 기록 갱신! ' : '') + lines + '줄 철거 · ' + level + '층'
+      + (unlocked.length ? ' · 새 옷 해금: ' + unlocked.join(', ') : '');
     ovBtn.textContent = '다시 짓기';
     overlay.hidden = false;
-    setMood('sad', '다음엔 더 높이 쌓자냥');
+    setMood('sad', unlocked.length ? '새 옷이 열렸어요' : '게임 오버');
   }
   function togglePause() {
     if (state === 'playing') {
-      state = 'paused'; ovTitle.textContent = '잠깐 쉬는 중'; ovScore.hidden = true; ovSub.textContent = 'P 키로 계속할 수 있어요';
+      state = 'paused'; ovTitle.textContent = '일시정지'; ovScore.hidden = true; ovSub.textContent = 'P 키로 계속할 수 있어요';
       ovBtn.textContent = '계속하기'; overlay.hidden = false;
-      setMood('sleep', '쿨쿨…');
+      setMood('sleep', '일시정지');
     } else if (state === 'paused') {
       state = 'playing'; overlay.hidden = true;
-      setMood('idle', '다시 시작이다냥!', 1500);
+      setMood('idle', chatter[0], 1500);
     }
   }
   function primary() {
     if (state === 'paused') togglePause(); else if (state === 'ready' || state === 'over') start();
   }
 
-  function showPop(t) {
-    pop.textContent = t; pop.classList.remove('go'); void pop.offsetWidth; pop.classList.add('go');
+  function showPop(notes, gain) {
+    pop.innerHTML = '';
+    notes.forEach(function (t, i) {
+      var el = document.createElement(i === 0 ? 'div' : 'small'); el.textContent = t; pop.appendChild(el);
+    });
+    var g = document.createElement('small'); g.textContent = '+' + gain.toLocaleString('ko-KR'); pop.appendChild(g);
+    pop.classList.remove('go'); void pop.offsetWidth; pop.classList.add('go');
   }
   function updateHud() {
     $('score').textContent = score.toLocaleString('ko-KR');
