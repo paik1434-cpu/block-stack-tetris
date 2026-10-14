@@ -96,8 +96,8 @@ body::before { content: ""; position: fixed; inset: 0; pointer-events: none; z-i
 .card .big { font-family: var(--font-display); font-size: clamp(26px, 7vw, 34px); line-height: 1.1; font-variant-numeric: tabular-nums; }
 .btn { font-family: var(--font-display); font-size: 18px; background: var(--accent); color: var(--on-accent); border: 3px solid var(--brown); border-radius: 999px; padding: 6px 28px; cursor: pointer; box-shadow: 0 4px 0 var(--brown); text-shadow: 0 2px 0 var(--accent-edge); }
 .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--brown); }
-.pop { position: absolute; left: 0; right: 0; top: 34%; text-align: center; font-family: var(--font-display); font-size: clamp(20px, 6vw, 28px); color: #fff; -webkit-text-stroke: 5px var(--brown); paint-order: stroke fill; pointer-events: none; opacity: 0; }
-.pop.go { animation: pop .9s ease-out forwards; }
+.pop { position: absolute; left: 0; right: 0; top: 34%; text-align: center; font-family: var(--font-display); font-size: clamp(20px, 6vw, 28px); color: #fff; -webkit-text-stroke: 5px var(--brown); paint-order: stroke fill; pointer-events: none; opacity: 0; display: none; }
+.pop.go { display: block; animation: pop .9s ease-out forwards; }
 @keyframes pop { 0% { opacity: 0; transform: translateY(12px) scale(.9); } 20% { opacity: 1; transform: none; } 75% { opacity: 1; } 100% { opacity: 0; transform: translateY(-14px); } }
 @keyframes popFade { 0% { opacity: 0; } 15% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .pop.go { animation: popFade .9s linear forwards; } .board-wrap.shake { animation: none; } }
@@ -586,6 +586,7 @@ ul.plain li { margin-bottom: 4px; }
     board = []; for (var r = 0; r < ROWS; r++) board.push(new Array(COLS).fill(0));
     hold = null; canHold = true; queue = []; score = 0; lines = 0; level = 1; keys = {};
     clearRows = null; particles = []; combo = -1; b2b = false;
+    clearTimeout(popTimer); pop.classList.remove('go'); pop.innerHTML = '';
     updateHud();
   }
   function start() {
@@ -623,6 +624,7 @@ ul.plain li { margin-bottom: 4px; }
   }
 
   var popTimer = null;
+  pop.addEventListener('animationend', function () { pop.classList.remove('go'); pop.innerHTML = ''; });
   function showPop(notes, gain) {
     pop.innerHTML = '';
     notes.forEach(function (t, i) {
